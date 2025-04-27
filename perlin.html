@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Perlin Noise Examples (2D & 3D)</title>
+  <title>Animated Perlin Noise Examples (2D & 3D)</title>
   <style>
     body { background: #111; color: #ddd; font-family: sans-serif; margin: 0; padding: 0; }
     h1, h2 { text-align: center; }
@@ -10,18 +10,18 @@
   </style>
 </head>
 <body>
-<h1>Perlin Noise Examples</h1>
+<h1>Animated Perlin Noise Examples</h1>
 
 <h2>2D Canvas: Fire, Mountains, Clouds</h2>
 <canvas id="fireCanvas" width="400" height="400"></canvas>
 <canvas id="mountainCanvas" width="400" height="400"></canvas>
 <canvas id="cloudCanvas" width="400" height="400"></canvas>
 
-<h2>3D Three.js: Mountains, Clouds</h2>
+<h2>3D Three.js: Animated Terrain</h2>
 <div id="threeDContainer" style="width:100%; height:500px;"></div>
 
 <script>
-// === Simple Perlin Noise implementation ===
+// === Simple Perlin Noise ===
 const Perlin = {
   grad: new Array(512),
   perm: new Array(512),
@@ -77,7 +77,7 @@ const Perlin = {
 };
 Perlin.init();
 
-function generate2DNoise(ctx, type) {
+function generate2DNoise(ctx, type, time) {
   const w = ctx.canvas.width;
   const h = ctx.canvas.height;
   const imgData = ctx.createImageData(w, h);
@@ -85,15 +85,15 @@ function generate2DNoise(ctx, type) {
 
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
-      let value = Perlin.noise(x * scale, y * scale);
-      value = (value + 1) / 2; // normalize 0-1
+      let value = Perlin.noise(x * scale, y * scale, time);
+      value = (value + 1) / 2;
 
       let i = (y * w + x) * 4;
 
       if (type === 'fire') {
         imgData.data[i] = 255;
         imgData.data[i+1] = value * 128;
-        imgData.data[i+2] = 0;
+        imgData.data[i+2] = value * 30;
       } else if (type === 'mountain') {
         let grey = value * 255;
         imgData.data[i] = imgData.data[i+1] = imgData.data[i+2] = grey;
@@ -108,15 +108,24 @@ function generate2DNoise(ctx, type) {
   ctx.putImageData(imgData, 0, 0);
 }
 
-generate2DNoise(document.getElementById('fireCanvas').getContext('2d'), 'fire');
-generate2DNoise(document.getElementById('mountainCanvas').getContext('2d'), 'mountain');
-generate2DNoise(document.getElementById('cloudCanvas').getContext('2d'), 'cloud');
+const fireCtx = document.getElementById('fireCanvas').getContext('2d');
+const mountainCtx = document.getElementById('mountainCanvas').getContext('2d');
+const cloudCtx = document.getElementById('cloudCanvas').getContext('2d');
 
+let t = 0;
+function animate2D() {
+  generate2DNoise(fireCtx, 'fire', t);
+  generate2DNoise(mountainCtx, 'mountain', 0); // static mountains
+  generate2DNoise(cloudCtx, 'cloud', t * 0.3);
+  t += 0.01;
+  requestAnimationFrame(animate2D);
+}
+animate2D();
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.150.0/build/three.min.js"></script>
 <script>
-// === 3D Three.js Perlin noise terrain ===
+// === 3D Three.js Animated Perlin Terrain ===
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / 500, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer();
@@ -131,23 +140,27 @@ scene.add(plane);
 
 plane.rotation.x = -Math.PI / 2;
 
-for (let i = 0; i < geometry.attributes.position.count; i++) {
-  let x = geometry.attributes.position.getX(i);
-  let y = geometry.attributes.position.getY(i);
-  let z = Perlin.noise(x * 0.1, y * 0.1) * 10;
-  geometry.attributes.position.setZ(i, z);
-}
-geometry.computeVertexNormals();
-
 camera.position.set(0, 30, 30);
 camera.lookAt(0, 0, 0);
 
-function animate() {
-  requestAnimationFrame(animate);
-  renderer.render(scene, camera);
-}
-animate();
+let time3D = 0;
+function animate3D() {
+  const pos = geometry.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    let x = pos.getX(i);
+    let y = pos.getY(i);
+    let z = Perlin.noise(x * 0.1, y * 0.1, time3D) * 10;
+    pos.setZ(i, z);
+  }
+  pos.needsUpdate = true;
+  geometry.computeVertexNormals();
 
+  time3D += 0.01;
+
+  renderer.render(scene, camera);
+  requestAnimationFrame(animate3D);
+}
+animate3D();
 </script>
 
 </body>
